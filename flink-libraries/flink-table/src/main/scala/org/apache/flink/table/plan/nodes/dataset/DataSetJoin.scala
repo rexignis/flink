@@ -144,6 +144,11 @@ class DataSetJoin(
       })
     }
 
+    // Hvad er parellelismen for denne operation?
+    // Hvor stor er mit venstre dataset i forhold til det højre? Estimering
+    // Sæt parellismen tilsvarende på de to operationer.
+
+    // Release/Acquire singleton holder styr på parellelism
     val leftDataSet = left.asInstanceOf[DataSetRel].translateToPlan(tableEnv)
     val rightDataSet = right.asInstanceOf[DataSetRel].translateToPlan(tableEnv)
 
