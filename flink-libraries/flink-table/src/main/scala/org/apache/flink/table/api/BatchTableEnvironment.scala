@@ -30,6 +30,7 @@ import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.io.DiscardingOutputFormat
 import org.apache.flink.api.java.typeutils.GenericTypeInfo
 import org.apache.flink.api.java.{DataSet, ExecutionEnvironment}
+import org.apache.flink.configuration.GlobalConfiguration
 import org.apache.flink.table.explain.PlanJsonParser
 import org.apache.flink.table.expressions.Expression
 import org.apache.flink.table.plan.nodes.dataset.{DataSetConvention, DataSetRel}
@@ -216,22 +217,22 @@ abstract class BatchTableEnvironment(
     * @return The optimized [[RelNode]] tree
     */
   private[flink] def optimize(relNode: RelNode): RelNode = {
+    val flinkConfig = GlobalConfiguration.loadConfiguration()
+    val joinStrategy = flinkConfig.getString("table.join.strategy", "none");
 
-    val cliqueSquare = new CliqueSquare()
+    if (joinStrategy.equals("dpccp")) {
+      val cliqueSquare = new CliqueSquare()
+      println("--- BEFORE ---")
+      println(RelOptUtil.toString(relNode))
 
-    println("--- BEFORE ---")
-    println(RelOptUtil.toString(relNode))
+      println("--- AFTER ---")
+      cliqueSquare.optimize(relNode)
+      println(RelOptUtil.toString(relNode))
+    }
 
-    println("--- AFTER ---")
-    cliqueSquare.optimize(relNode)
-    println(RelOptUtil.toString(relNode))
-
-//    println("--- DECORRELATE ---");
     // 1. decorrelate
     val decorPlan = RelDecorrelator.decorrelateQuery(relNode)
-//    println(RelOptUtil.toString(decorPlan))
 
-//    println("--- NORMALIZE ---");
     // 2. normalize the logical plan
     val normRuleSet = getNormRuleSet
     val normalizedPlan = if (normRuleSet.iterator().hasNext) {
@@ -239,9 +240,7 @@ abstract class BatchTableEnvironment(
     } else {
       decorPlan
     }
-//    println(RelOptUtil.toString(normalizedPlan))
 
-//    println("--- OPTIMIZE ---")
     // 3. optimize the logical Flink plan
     val optRuleSet = getOptRuleSet
     val flinkOutputProps = relNode.getTraitSet.replace(DataSetConvention.INSTANCE).simplify()
@@ -250,7 +249,6 @@ abstract class BatchTableEnvironment(
     } else {
       normalizedPlan
     }
-//    println(RelOptUtil.toString(optimizedPlan))
 
     optimizedPlan
   }
