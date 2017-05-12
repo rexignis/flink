@@ -48,9 +48,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public class CliqueSquare {
+public class DPCCP {
 
-	public CliqueSquare() {
+	public DPCCP() {
 	}
 
 	public RelNode optimize(RelNode relNode) {

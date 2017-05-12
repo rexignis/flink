@@ -22,6 +22,7 @@ import _root_.java.lang.reflect.Modifier
 import _root_.java.util.concurrent.atomic.AtomicInteger
 
 import com.google.common.collect.ImmutableList
+import dk.aau.flink.engine.QueryTranslator
 import org.apache.calcite.config.Lex
 import org.apache.calcite.jdbc.CalciteSchema
 import org.apache.calcite.plan.RelOptPlanner.CannotPlanException
@@ -248,6 +249,10 @@ abstract class TableEnvironment(val config: TableConfig) {
             s"${t.msg}\n" +
             s"Please check the documentation for the set of currently supported SQL features.")
       case a: AssertionError =>
+        println(a.getMessage)
+        println(a.getStackTraceString)
+        println(a.getCause.getMessage)
+        println(a.getCause.getStackTraceString)
         throw a.getCause
     }
     output
@@ -449,6 +454,13 @@ abstract class TableEnvironment(val config: TableConfig) {
     val relational = planner.rel(validated)
 
     new Table(this, LogicalRelNode(relational.rel))
+  }
+
+
+  def sparql(query: String): Table = {
+    // Translate sparql query to flink plan
+    val relational = QueryTranslator.greedy(query, this)
+    new Table(this, LogicalRelNode(relational))
   }
 
   /**

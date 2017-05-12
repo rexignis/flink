@@ -109,6 +109,12 @@ under the License.
             <scope>compile</scope>
         </dependency>
 
+		<dependency>
+			<groupId>dk.aau.flink</groupId>
+			<artifactId>query-optimizers</artifactId>
+			<version>1.0-SNAPSHOT</version>
+		</dependency>
+
 		<!-- test dependencies -->
 
 		<dependency>
