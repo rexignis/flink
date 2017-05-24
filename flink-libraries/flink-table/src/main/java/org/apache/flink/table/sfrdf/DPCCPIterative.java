@@ -39,6 +39,7 @@ import org.apache.calcite.util.Pair;
 import org.apache.flink.api.java.tuple.Tuple2;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -46,11 +47,13 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 import java.util.Set;
 
-public class DPCCP {
+@SuppressWarnings({"Duplicates"})
+public class DPCCPIterative {
 
-	public DPCCP() {
+	public DPCCPIterative() {
 	}
 
 	public static Map<String, Long> executionTimes = new HashMap<>();
@@ -137,14 +140,6 @@ public class DPCCP {
 		}
 		System.out.println("Enumerate " + csgCmpPairs.size() + " csg-cmp-pairs in " + (System.currentTimeMillis() - start2));
 
-		long start3 = System.currentTimeMillis();
-//		Collections.sort(csgCmpPairs, new Comparator<Tuple2<Set<Vertex>, Set<Vertex>>>() {
-//			@Override
-//			public int compare(Tuple2<Set<Vertex>, Set<Vertex>> o1, Tuple2<Set<Vertex>, Set<Vertex>> o2) {
-//				return o1.f1.size() - o2.f1.size();
-//			}
-//		});
-		System.out.println("Sort all the enumerated pairs in " + (System.currentTimeMillis() - start3));
 
 		// Foreach pair see if the plan is better than previous ones.
 		long start4 = System.currentTimeMillis();
@@ -209,7 +204,9 @@ public class DPCCP {
 		for (int i = orderedN.size() - 1; i >= 0; i--) {
 			Set<Vertex> set = Sets.newHashSet(orderedN.get(i));
 			complements.add(set);
-			enumerateCsgRecursive(set, Sets.union(X, N), complements);
+
+			Queue<Arguments> queue = new LinkedList<>();
+			emitCSGs(new ArrayList<Vertex>(), complements, set, betaI);
 		}
 
 		return complements;
@@ -223,8 +220,7 @@ public class DPCCP {
 		for (int i = enumeratedVertices.size() - 1; i >= 0; i--) {
 			// Add itself
 			final Vertex element = enumeratedVertices.get(i);
-			final Set<Vertex> set = new HashSet<>();
-			set.add(element);
+			final Set<Vertex> set = new HashSet<>(Arrays.asList(element));
 			connectedSubGraphs.add(set);
 
 			// Calculate beta_i, i.e. { v_j | j <= i }
@@ -233,57 +229,63 @@ public class DPCCP {
 				betaI.add(enumeratedVertices.get(j));
 			}
 
-			// Enumerate recursively
-			enumerateCsgRecursive(set, betaI, connectedSubGraphs);
+			emitCSGs(enumeratedVertices, connectedSubGraphs, set, betaI);
 		}
-
-//		Collections.sort(connectedSubGraphs, new Comparator<Set<Vertex>>() {
-//			@Override
-//			public int compare(Set<Vertex> o1, Set<Vertex> o2) {
-//				return o1.size() - o2.size();
-//			}
-//		});
-
 		return connectedSubGraphs;
 	}
 
-	private void enumerateCsgRecursive(Set<Vertex> S, Set<Vertex> X, List<Set<Vertex>> collector) {
-		// Find Neighbourhood(S) \ X
-		Set<Vertex> neighbourhood = new HashSet<>();
-		for (Vertex vertex : S) {
-			for (Vertex neighbour : vertex.getNeighbours()) {
-				if (!X.contains(neighbour) && !S.contains(neighbour)) {
-					neighbourhood.add(neighbour);
+	private void emitCSGs(List<Vertex> enumeratedVertices, List<Set<Vertex>> connectedSubGraphs, Set<Vertex> set, Set<Vertex> betaI) {
+		final Queue<Arguments> queue = new LinkedList<>();
+		queue.add(new Arguments(set, betaI));
+
+		while (!queue.isEmpty()) {
+			Arguments current = queue.poll();
+
+			Set<Vertex> neighborhood = new HashSet<>();
+			for (Vertex vertex : current.S) {
+				for (Vertex neighbour : vertex.getNeighbours()) {
+					if (!current.X.contains(neighbour) && !current.S.contains(neighbour)) {
+						neighborhood.add(neighbour);
+					}
 				}
 			}
+
+			List<Set<Vertex>> subsets = new ArrayList<>(Sets.powerSet(neighborhood));
+
+			// Order the set by increasing size
+			Collections.sort(subsets, new Comparator<Set<Vertex>>() {
+				@Override
+				public int compare(Set<Vertex> set1, Set<Vertex> set2) {
+					return set1.size() - set2.size();
+				}
+			});
+
+			// Emit subsets
+			for (Set<Vertex> subset : subsets) {
+				if (subset.size() == 0) {
+					continue;
+				}
+				connectedSubGraphs.add(Sets.union(current.S, subset));
+			}
+
+			// Call subsets recursively
+			for (Set<Vertex> subset : subsets) {
+				Set<Vertex> excludes = Sets.union(current.X, neighborhood);
+				if (subset.size() == 0 || excludes.size() == enumeratedVertices.size()) {
+					continue;
+				}
+				queue.add(new Arguments(Sets.union(current.S, subset), excludes));
+			}
 		}
+	}
 
-		// Enumerate all subsets of the neighbourhood
-		List<Set<Vertex>> subsets = new ArrayList<>(Sets.powerSet(neighbourhood));
+	private class Arguments {
+		public Set<Vertex> S;
+		public Set<Vertex> X;
 
-		// Order the set by increasing size
-		Collections.sort(subsets, new Comparator<Set<Vertex>>() {
-			@Override
-			public int compare(Set<Vertex> set1, Set<Vertex> set2) {
-				return set1.size() - set2.size();
-			}
-		});
-
-		// Emit subsets
-		for (Set<Vertex> subset : subsets) {
-			if (subset.size() == 0) {
-				continue;
-			}
-			collector.add(Sets.union(S, subset));
-		}
-
-		// Call subsets recursively
-		for (Set<Vertex> subset : subsets) {
-			if (subset.size() == 0) {
-				continue;
-			}
-			System.gc();
-			enumerateCsgRecursive(Sets.union(S, subset), Sets.union(X, neighbourhood), collector);
+		public Arguments(Set<Vertex> s, Set<Vertex> x) {
+			S = s;
+			X = x;
 		}
 	}
 
@@ -387,9 +389,9 @@ public class DPCCP {
 		}
 
 		public List<Vertex> getNeighbours() {
-			return Lists.transform(edges, new Function<Edge, Vertex>() {
+			return Lists.transform(edges, new Function<Edge, DPCCPIterative.Vertex>() {
 				@Override
-				public Vertex apply(Edge input) {
+				public DPCCPIterative.Vertex apply(Edge input) {
 					return input.vertex2;
 				}
 			});
