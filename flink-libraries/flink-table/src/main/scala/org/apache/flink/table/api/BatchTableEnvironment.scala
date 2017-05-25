@@ -220,7 +220,7 @@ abstract class BatchTableEnvironment(
     val flinkConfig = GlobalConfiguration.loadConfiguration()
     val joinStrategy = flinkConfig.getString("table.join.strategy", "none");
 
-    if (joinStrategy.equals("dpccp") || true) {
+    if (joinStrategy.equals("dpccp")) {
       val dpccp = new DPCCPIterative()
       dpccp.optimize(relNode)
     }
