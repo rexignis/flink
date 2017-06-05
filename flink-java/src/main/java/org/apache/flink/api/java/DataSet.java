@@ -177,7 +177,7 @@ public abstract class DataSet<T> {
 					+ "the transformation call, or by letting your function implement the 'ResultTypeQueryable' "
 					+ "interface.", typeInfo.getTypeException());
 		}
-		typeUsed = true;
+//		typeUsed = true;
 		return this.type;
 	}
 

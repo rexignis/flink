@@ -36,7 +36,7 @@ import org.apache.flink.table.expressions.Expression
 import org.apache.flink.table.plan.nodes.dataset.{DataSetConvention, DataSetRel}
 import org.apache.flink.table.plan.rules.FlinkRuleSets
 import org.apache.flink.table.plan.schema.{DataSetTable, TableSourceTable}
-import org.apache.flink.table.sfrdf.DPCCPIterative
+import org.apache.flink.table.sfrdf.{DPCCP, DPCCPIterative}
 import org.apache.flink.table.sinks.{BatchTableSink, TableSink}
 import org.apache.flink.table.sources.{BatchTableSource, TableSource}
 import org.apache.flink.types.Row
@@ -220,8 +220,8 @@ abstract class BatchTableEnvironment(
     val flinkConfig = GlobalConfiguration.loadConfiguration()
     val joinStrategy = flinkConfig.getString("table.join.strategy", "none");
 
-    if (joinStrategy.equals("dpccp")) {
-      val dpccp = new DPCCPIterative()
+    if (joinStrategy.equals("dpccp") || true) {
+      val dpccp = new DPCCP()
       dpccp.optimize(relNode)
     }
 

@@ -18,11 +18,13 @@
 
 package org.apache.flink.table.sinks
 
-import org.apache.flink.api.common.functions.MapFunction
+import org.apache.flink.api.common.accumulators.{IntCounter, LongCounter}
+import org.apache.flink.api.common.functions.{MapFunction, RichMapFunction}
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.DataSet
 import org.apache.flink.types.Row
 import org.apache.flink.api.java.typeutils.RowTypeInfo
+import org.apache.flink.configuration.Configuration
 import org.apache.flink.core.fs.FileSystem.WriteMode
 import org.apache.flink.streaming.api.datastream.DataStream
 
@@ -111,9 +113,16 @@ class CsvTableSink(
   *
   * @param fieldDelim The field delimiter.
   */
-class CsvFormatter(fieldDelim: String) extends MapFunction[Row, String] {
-  override def map(row: Row): String = {
+class CsvFormatter(fieldDelim: String) extends RichMapFunction[Row, String] {
+  private val numLines = new LongCounter()
 
+  override def open(parameters: Configuration): Unit = {
+    super.open(parameters)
+    getRuntimeContext.addAccumulator("num-lines", this.numLines)
+  }
+
+  override def map(row: Row): String = {
+    numLines.add(1)
     val builder = new StringBuilder
 
     // write first value

@@ -463,6 +463,11 @@ abstract class TableEnvironment(val config: TableConfig) {
     new Table(this, LogicalRelNode(relational))
   }
 
+  def sparqlCliqueSquare(query: String): Table = {
+    val relational = QueryTranslator.cliqueSquare(query, this)
+    new Table(this, LogicalRelNode(relational))
+  }
+
   /**
     * Writes a [[Table]] to a [[TableSink]].
     *
